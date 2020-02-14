@@ -10,8 +10,10 @@ import neopixel
 import adafruit_lis3dh
 import gc
 
-# CUSTOMIZE YOUR COLOR HERE:
-STANDARD = (255, 200, 0)
+# CUSTOMIZE YOUR WEAPONS HERE:
+BUSTER = (255, 200, 0)
+CHARGE_BUSTER = (0,100,255)
+IDLE = (255,0,0)
 AIR = (0,0,255)
 WOOD = (0,255,0)
 QUICK = (0,0,0)
@@ -20,8 +22,11 @@ HEAT = (255,50,0)
 BUBBLE = (196,202,206)
 METAL = (133,87,35)
 CRASH = (255, 100, 0)
-COLOR = STANDARD
-WEAPON_LIST = [STANDARD, AIR, WOOD, QUICK, FLASH, HEAT, BUBBLE, METAL, CRASH]
+GAUGE_COLOR = BUSTER
+EMMITER_COLOR = IDLE
+WEAPON_LIST = [BUSTER, AIR, WOOD, QUICK, FLASH, HEAT, BUBBLE, METAL, CRASH]
+WEAPON_NAMES = ["Buster", "Air", "Wood", "Quick", "Flash", "Heat", "Bubble", "Metal", "Crash"]
+ACTIVE_WEAPON = WEAPON_NAMES[0]
 
 # CUSTOMIZE SENSITIVITY HERE: smaller numbers = more sensitive to motion
 HIT_THRESHOLD = 350
@@ -35,13 +40,6 @@ SWITCH_PIN = board.D9
 enable = DigitalInOut(POWER_PIN)  
 enable.direction = Direction.OUTPUT
 enable.value =False
-
-red_led = DigitalInOut(board.D11)
-red_led.direction = Direction.OUTPUT
-green_led = DigitalInOut(board.D12)
-green_led.direction = Direction.OUTPUT
-blue_led = DigitalInOut(board.D13)
-blue_led.direction = Direction.OUTPUT
 
 audio = audioio.AudioOut(board.A0)     # Speaker
 mode = 0                               # Initial mode = OFF
@@ -82,17 +80,14 @@ def play_wav(name, loop=False):
     except:
         return
 
-def power(sound, duration, reverse):
+def power(sound, duration):
     """
     Animate NeoPixels with accompanying sound effect for power on / off.
     @param sound:    sound name (similar format to play_wav() above)
     @param duration: estimated duration of sound, in seconds (>0.0)
     @param reverse:  if True, do power-off effect (reverses animation)
     """
-    if reverse:
-        prev = NUM_PIXELS
-    else:
-        prev = 0
+    prev = 0
     gc.collect()                   # Tidy up RAM now so animation's smoother
     start_time = time.monotonic()  # Save audio start time
     play_wav(sound)
@@ -101,16 +96,11 @@ def power(sound, duration, reverse):
         if elapsed > duration:                   # Past sound duration?
             break                                # Stop animating
         fraction = elapsed / duration            # Animation time, 0.0 to 1.0
-        if reverse:
-            fraction = 1.0 - fraction            # 1.0 to 0.0 if reverse
         fraction = math.pow(fraction, 0.5)       # Apply nonlinear curve
         threshold = int(NUM_PIXELS * fraction + 0.5)
         num = threshold - prev # Number of pixels to light on this pass
         if num != 0:
-            if reverse:
-                strip[threshold:prev] = [0] * -num
-            else:
-                strip[prev:threshold] = [COLOR_IDLE] * num
+            strip[prev:threshold] = [COLOR_IDLE] * num
             strip.show()
             # NeoPixel writes throw off time.monotonic() ever so slightly
             # because interrupts are disabled during the transfer.
@@ -119,10 +109,7 @@ def power(sound, duration, reverse):
             start_time -= NUM_PIXELS * 0.00003
             prev = threshold
 
-    if reverse:
-        strip.fill(0)                            # At end, ensure strip is off
-    else:
-        strip.fill(COLOR_IDLE)                   # or all pixels set on
+    strip.fill(COLOR_IDLE)                   # or all pixels set on
     strip.show()
     while audio.playing:                         # Wait until audio done
         pass
@@ -146,7 +133,20 @@ def mix(color_1, color_2, weight_2):
 
 def chargeShot():
     play_wav("chargeBlast.wav")
-    strip[44:50]
+    strip[44:50] = CHARGE_BUSTER
+    strip.show()
+    time.sleep(1)
+    strip[44:50] = IDLE
+    strip.show()
+
+def weaponFire():
+    play_wav(ACTIVE_WEAPON, loop=False)
+    strip[44:50] = ACTIVE_WEAPON
+    strip.show()
+    time.sleep(1)
+    strip[44:50] = IDLE
+    strip.show()
+
 # Main program loop, repeats indefinitely
 while True:
 
