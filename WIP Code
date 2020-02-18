@@ -1,0 +1,44 @@
+#Work in Progress
+
+#Gauge mechanics
+
+import time
+
+AMMO = 15
+AMMO2= 16
+WEAPON_NAMES = ["Buster", "Air", "Wood", "Quick", "Flash", "Heat", "Bubble", "Metal", "Crash"]
+WEAPON_TRACKER = 0
+
+def powerGauge(weapon):
+  for i in range (16):
+    print("Pixel",i, "Lit","Pixel",31-i,"Lit")
+    time.sleep(.1)
+  print("Gauge Color", weapon)
+
+powerGauge(WEAPON_NAMES[WEAPON_TRACKER])
+
+print("----------------------------------")
+while True:
+  x = input()
+  if x == "fire":
+    if AMMO == -1:
+      print("EMPTY")
+    else:
+      print("Pixel", AMMO, "OFF PIXEL", AMMO2, "OFF")
+      AMMO -= 1
+      AMMO2 += 1
+  elif x == "reload":
+    AMMO = 15
+    AMMO2 = 16
+    for i in range (16):
+      print("Pixel",i, "Lit","Pixel",31-i,"Lit")
+      time.sleep(.1)
+  elif x == "swap":
+    if WEAPON_TRACKER == 8:
+      WEAPON_TRACKER = 0
+    else:
+      WEAPON_TRACKER += 1
+    print("Weapon Num", WEAPON_TRACKER)
+    powerGauge(WEAPON_NAMES[WEAPON_TRACKER])
+    
+      
