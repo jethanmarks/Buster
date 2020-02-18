@@ -11,26 +11,31 @@ import adafruit_lis3dh
 import gc
 
 # CUSTOMIZE YOUR WEAPONS HERE:
-BUSTER = (255, 200, 0)
-CHARGE_BUSTER = (0,100,255)
-IDLE = (255,0,0)
-AIR = (0,0,255)
-WOOD = (0,255,0)
-QUICK = (0,0,0)
-FLASH = (255,0,150)
-HEAT = (255,50,0)
-BUBBLE = (196,202,206)
-METAL = (133,87,35)
-CRASH = (255, 100, 0)
-GAUGE_COLOR = BUSTER
-EMMITER_COLOR = IDLE
+BUSTER = (255, 200, 0)              # Standard Yellow Gauge Color
+CHARGE_BUSTER = (0,100,255)         # Cyan color for charge buster
+IDLE = (255,0,0)                    # Red color for emitter
+AIR = (0,0,255)                     # Blue for Air Man
+WOOD = (0,255,0)                    # Green for Wood Man
+QUICK = (0,0,0)                     # Pink for Quick Man
+FLASH = (255,0,150)                 # Purple for Flash Man
+HEAT = (255,50,0)                   # Red Orange for Heat Man
+BUBBLE = (196,202,206)              # Silver/ Gray for Bubble Man
+METAL = (133,87,35)                 # Brown for Metal Man
+CRASH = (255, 100, 0)               # Orange for Crash Man
+GAUGE_COLOR = BUSTER                # Default Gauge color to yellow
+EMMITER_COLOR = IDLE                # Default Emitter color to red
 WEAPON_LIST = [BUSTER, AIR, WOOD, QUICK, FLASH, HEAT, BUBBLE, METAL, CRASH]
 WEAPON_NAMES = ["Buster", "Air", "Wood", "Quick", "Flash", "Heat", "Bubble", "Metal", "Crash"]
 ACTIVE_WEAPON = WEAPON_NAMES[0]
+CHARGE_COUNTER = 0 
+CHARGED = False
+WEAPON_TRACKER = 0
+AMMO = 15
+AMMO2 = 16
+AMMO_COUNTER = 0
 
 # CUSTOMIZE SENSITIVITY HERE: smaller numbers = more sensitive to motion
-HIT_THRESHOLD = 350
-SWING_THRESHOLD = 125
+SWAP_THRESHOLD = 350
 
 NUM_PIXELS = 51
 NEOPIXEL_PIN = board.D5
@@ -58,11 +63,6 @@ time.sleep(0.1)
 i2c = busio.I2C(board.SCL, board.SDA)
 accel = adafruit_lis3dh.LIS3DH_I2C(i2c)
 accel.range = adafruit_lis3dh.RANGE_4_G
-
-# "Idle" color is 1/4 brightness, "swinging" color is full brightness...
-COLOR_IDLE = (int(COLOR[0] / 3), int(COLOR[1] / 3), int(COLOR[2] / 3))
-COLOR_SWING = COLOR
-COLOR_HIT = (255, 255, 255)  # "hit" color is white
 
 def play_wav(name, loop=False):
     """
@@ -139,55 +139,55 @@ def chargeShot():
     strip[44:50] = IDLE
     strip.show()
 
-def weaponFire():
-    play_wav(ACTIVE_WEAPON, loop=False)
-    strip[44:50] = ACTIVE_WEAPON
+def weaponFire(weaponName, weaponColor):
+    play_wav(weaponName, loop=False)
+    strip[44:50] = weaponColor
     strip.show()
     time.sleep(1)
     strip[44:50] = IDLE
     strip.show()
+    if not weaponName == "Buster":
+        if AMMO == 0:
+            play_wav('empty')
+        strip[AMMO] = (0,0,0)
+        strip[AMMO2] = (0,0,0)
+        AMMO -= 1
+        AMMO2 += 1
+
+def weaponSwap(weapon):
+    AMMO = 15
+    AMMO2 = 16
+    strip.fill(0)                          # NeoPixels off ASAP on startup
+    strip.show()
+    for i in range(16):
+        x = 31 - i
+        strip[i] = weapon
+        strip[x] = weapon
+        strip.show()
+        play_wav('fill')                   # Start playing 'fill' sound
+        time.sleep(.1)                     # Sleep for .1 second
 
 # Main program loop, repeats indefinitely
+power('on', 1.7, False)         # Power up!
+
 while True:
-
     if not switch.value:                    # button pressed?
-        if mode == 0:                       # If currently off...
-            enable.value = True
-            power('on', 1.7, False)         # Power up!
-            play_wav('idle', loop=True)     # Play background hum sound
-            mode = 1                        # ON (idle) mode now
-        else:                               # else is currently on...
-            power('off', 1.15, True)        # Power down
-            mode = 0                        # OFF mode now
-            enable.value = False
+        weaponFire(WEAPON_LIST[WEAPON_NAMES],WEAPON_LIST[WEAPON_TRACKER])
         while not switch.value:             # Wait for button release
-            time.sleep(0.2)                 # to avoid repeated triggering
+            time.sleep(1)                 # to avoid repeated triggering
+            CHARGE_COUNTER += 1
+            if CHARGE_COUNTER == 2: #ADD AND CONDITION FOR BUTTON RELEASE
+                CHARGED = True
+                CHARGE_COUNTER = 0
+    if CHARGED:
+        chargeShot()
+        
+    x, y, z = accel.acceleration # Read accelerometer
+    accel_total = x * x + z * z
+    # (Y axis isn't needed for this, assuming Hallowing is mounted
+    # sideways to stick.  Also, square root isn't needed, since we're
+    # just comparing thresholds...use squared values instead, save math.)
+    if accel_total > SWAP_THRESHOLD:   # Large acceleration = SWAP
+        weaponSwap(WEAPON_LIST[WEAPON_TRACKER])
+        WEAPON_TRACKER += 1
 
-    elif mode >= 1:                         # If not OFF mode...
-        x, y, z = accel.acceleration # Read accelerometer
-        accel_total = x * x + z * z
-        # (Y axis isn't needed for this, assuming Hallowing is mounted
-        # sideways to stick.  Also, square root isn't needed, since we're
-        # just comparing thresholds...use squared values instead, save math.)
-        if accel_total > HIT_THRESHOLD:   # Large acceleration = HIT
-            TRIGGER_TIME = time.monotonic() # Save initial time of hit
-            play_wav('hit')                 # Start playing 'hit' sound
-            COLOR_ACTIVE = COLOR_HIT        # Set color to fade from
-            mode = 3                        # HIT mode
-        elif mode is 1 and accel_total > SWING_THRESHOLD: # Mild = SWING
-            TRIGGER_TIME = time.monotonic() # Save initial time of swing
-            play_wav('swing')               # Start playing 'swing' sound
-            COLOR_ACTIVE = COLOR_SWING      # Set color to fade from
-            mode = 2                        # SWING mode
-        elif mode > 1:                      # If in SWING or HIT mode...
-            if audio.playing:               # And sound currently playing...
-                blend = time.monotonic() - TRIGGER_TIME # Time since triggered
-                if mode == 2:               # If SWING,
-                    blend = abs(0.5 - blend) * 2.0 # ramp up, down
-                strip.fill(mix(COLOR_ACTIVE, COLOR_IDLE, blend))
-                strip.show()
-            else:                           # No sound now, but still MODE > 1
-                play_wav('idle', loop=True) # Resume background hum
-                strip.fill(COLOR_IDLE)      # Set to idle color
-                strip.show()
-                mode = 1                    # IDLE mode now
