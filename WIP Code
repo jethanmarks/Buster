@@ -3,11 +3,14 @@
 #Gauge mechanics
 
 import time
+import random
 
 AMMO = 15
 AMMO2= 16
+CHARGED_COLORS = ["Blue", "Cyan", "Dark Blue", "Light Blue"]
 WEAPON_NAMES = ["Buster", "Air", "Wood", "Quick", "Flash", "Heat", "Bubble", "Metal", "Crash"]
 WEAPON_TRACKER = 0
+CHARGED = False
 
 def powerGauge(weapon):
   for i in range (16):
@@ -40,5 +43,9 @@ while True:
       WEAPON_TRACKER += 1
     print("Weapon Num", WEAPON_TRACKER)
     powerGauge(WEAPON_NAMES[WEAPON_TRACKER])
-    
-      
+  elif x == "charge":
+    time.sleep(2)
+    print("2 seconds have passed")
+    CHARGED = True
+  While CHARGED:
+     random.randint(0, 5)
