@@ -46,6 +46,10 @@ while True:
   elif x == "charge":
     time.sleep(2)
     print("2 seconds have passed")
+    print("All pixels blue")
     CHARGED = True
-  While CHARGED:
-     random.randint(0, 5)
+  while CHARGED:
+    print("Pixel",random.randint(0, 9), "is", CHARGED_COLORS[random.randint(0,3)])
+    y = input()
+    if y == "release":
+      print("All pixels Cyan")
